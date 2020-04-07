@@ -1,0 +1,55 @@
+version: "2"
+
+# change The database congregations and node env before build
+services:
+# nginx proxy setup
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/etc/nginx/vhost.d"
+      - "/usr/share/nginx/html"
+      - "/var/run/docker.sock:/tmp/docker.sock:ro"
+      - "/etc/nginx/certs"
+
+# letsencrypt SSL certificate setup
+  letsencrypt-nginx-proxy-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: letsencrypt-nginx
+    environment: 
+      - DEFAULT_EMAIL=email@domain.com
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    volumes_from:
+      - "nginx-proxy"
+# --------------------------- Other services ------------------------
+  api:
+    build: api/
+    container_name: api
+    restart: unless-stopped
+    environment:
+      # nginx config ENV
+      - VIRTUAL_HOST=api.domain.com
+      - VIRTUAL_PORT=3030
+      - LETSENCRYPT_HOST=api.domain,com
+      - LETSENCRYPT_EMAIL=email@domain.com
+      # ---- other env vars here-------
+    ports:
+      - "3030:3030" 
+
+  web:
+    build: web/
+    container_name: web
+    restart: unless-stopped
+    environment:
+      # nginx config ENV
+      - VIRTUAL_HOST=domain.com
+      - VIRTUAL_PORT=8080
+      - LETSENCRYPT_HOST=domain,com
+      - LETSENCRYPT_EMAIL=email@domain.com
+      # ---- other env vars here-------
+    ports:
+      - "8080:8080" 
